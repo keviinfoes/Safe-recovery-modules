@@ -3,6 +3,7 @@ pragma solidity >=0.7.0 <0.8.0;
 
 import "./Enum.sol";
 import "./IERC20.sol";
+
 interface GnosisSafe {
     /// @dev Allows a Module to execute a Safe transaction without any further confirmations.
     /// @param to Destination address of module transaction.
@@ -25,24 +26,24 @@ contract InheritanceModule {
 
     mapping(address => uint16) public totalShare;
     mapping(address => mapping(address => uint16)) public totalWithdrawnShare;
-    mapping(address => Heir[]) public Heirs;
+    mapping(address => Heir[]) public heirs;
     mapping(address => mapping(address => mapping(address => uint16))) public heirWithdrawnShare;
     mapping(address => uint256) public deadline;
     
-    function setInheritance(address[] memory heirs, uint16[] memory shares, uint256 _deadline) public {
-        setHeirs(heirs, shares);
+    function setInheritance(address[] memory _heirs, uint16[] memory shares, uint256 _deadline) public {
+        setHeirs(_heirs, shares);
         setDeadline(_deadline);
     }
 
-    function setHeirs(address[] memory heirs, uint16[] memory shares) public {    
+    function setHeirs(address[] memory _heirs, uint16[] memory shares) public {    
         require(block.timestamp < deadline[msg.sender] || deadline[msg.sender] == 0, "SMH - inheritance active");
-        require(heirs.length == shares.length, "SMH - length does not match");
+        require(_heirs.length == shares.length, "SMH - length does not match");
         //Clear previous heirs
-        delete Heirs[msg.sender];
+        delete heirs[msg.sender];
         //Set new heirs
-        for (uint256 i; i < heirs.length; i++) {
-            Heir memory _heir = Heir(heirs[i], shares[i]);   
-            Heirs[msg.sender].push(_heir);
+        for (uint256 i; i < _heirs.length; i++) {
+            Heir memory _heir = Heir(_heirs[i], shares[i]);   
+            heirs[msg.sender].push(_heir);
             totalShare[msg.sender] += shares[i];
         }
         require(totalShare[msg.sender] == 10000 , "SMH - total main share not 10000");
@@ -56,7 +57,7 @@ contract InheritanceModule {
     }
 
     function execute(address safe, uint256 index, address token) public {
-        Heir memory _heir = Heirs[safe][index];
+        Heir memory _heir = heirs[safe][index];
         require(block.timestamp >= deadline[safe] && deadline[safe] != 0, "HE - before deadline");
         require(_heir.heir == msg.sender, "HE - no heir");
         //Get total shares for token
