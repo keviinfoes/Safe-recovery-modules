@@ -60,14 +60,14 @@ contract InheritanceModule {
         Heir memory _heir = heirs[safe][index];
         require(block.timestamp >= deadline[safe] && deadline[safe] != 0, "HE - before deadline");
         require(_heir.heir == msg.sender, "HE - no heir");
-        //Get total shares for token
-        require(totalShare[safe] >= totalWithdrawnShare[safe][token], "HE - before deadline");
-        uint16 totalShares = totalShare[safe] - totalWithdrawnShare[safe][token];
-        totalWithdrawnShare[safe][token] += _heir.share;
         //Get share for individual heir
-        require(_heir.share >= heirWithdrawnShare[safe][token][_heir.heir], "HE - before deadline");
+        require(_heir.share > heirWithdrawnShare[safe][token][_heir.heir], "HE - heir withdraw overflow ]");
         uint16 heirShares = _heir.share - heirWithdrawnShare[safe][token][_heir.heir];
         heirWithdrawnShare[safe][token][_heir.heir] += _heir.share;
+        //Get total shares for token
+        require(totalShare[safe] > totalWithdrawnShare[safe][token], "HE - totalwithdraw overflow");
+        uint16 totalShares = totalShare[safe] - totalWithdrawnShare[safe][token];
+        totalWithdrawnShare[safe][token] += _heir.share;
         //Transfer the token share
         if (token == address(0)) {
             uint256 balance = safe.balance;
