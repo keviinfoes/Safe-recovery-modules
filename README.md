@@ -7,4 +7,7 @@ The inheritance module allows a Safe to set spenders with a time delay. The time
 ## Test
 TODO: ADD TESTS
 
+## App
+TODO: ADD APP
+    - Current implementation based on example https://github.com/safe-global/safe-apps-sdk/tree/master/guides/drain-safe-app
 
