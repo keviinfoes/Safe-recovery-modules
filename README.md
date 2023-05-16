@@ -14,5 +14,4 @@ truffle test
 
 ## App
 TODO: ADD APP
-    - Current implementation based on example https://github.com/safe-global/safe-apps-sdk/tree/master/guides/drain-safe-app
 
