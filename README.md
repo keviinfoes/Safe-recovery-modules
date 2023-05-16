@@ -1,11 +1,16 @@
 # Safe Inheritance module
-The inheritance module allows a Safe to set spenders with a time delay. The time delayed spenders can be used for inheritance or as a back-up wallet.
+The inheritance module allows a Safe to set new owners (heirs) with a time delay. The time delayed heirs can be used for inheritance or as a back-up wallet.
 
 ## Description
-- Periodically the owner needs to update the deadline, else the spender is able to spend the balance of the Safe. 
+Periodically the owner needs to update the deadline, else the heirs are able to become owners of the safe. 
 
-## Test
-TODO: ADD TESTS
+## Test web3
+To run the test for the inheritance smart contract run the following commands.
+```
+cd web3
+yarn
+truffle test
+```
 
 ## App
 TODO: ADD APP
