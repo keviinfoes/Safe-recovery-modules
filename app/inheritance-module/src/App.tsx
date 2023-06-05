@@ -1,7 +1,7 @@
-import React, {useState, useEffect}/*, { useCallback }*/ from 'react'
+import React, {useState, useEffect, useCallback } from 'react'
 import { ethers } from 'ethers';
 import styled from 'styled-components'
-import { Button, Title, ManageListModal, AddressInput } from '@gnosis.pm/safe-react-components'
+import { Button, ButtonLink, Title, GenericModal, Table, TableRow, TextField, AddressInput} from '@gnosis.pm/safe-react-components'
 import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
 
 //Flap countdown
@@ -17,46 +17,131 @@ const Container = styled.div`
   align-items: center;
   flex-direction: column;
 `
-
-
 const SafeApp = (): React.ReactElement => {
+  const inheritance_address_goerli = "0xb9cBb0e33C97d9ea46Ae312a508ad2b62fF429AA"
   const { sdk, safe } = useSafeAppsSDK()
-  
+
+
+
   //Modal for inheritance change
-  const [isOpen, setIsOpen] = useState(false);
-  const [items, setItems] = useState([
+  const [isOpenInheritance, setIsOpenInheritance] = useState(false);
+  const [isOpenHeirs, setIsOpenHeirs] = useState(false);
+  const [idHeirs, setIdHeirs] = useState("");
+  const [hasError, setHasError] = useState<boolean>();
+  const [address, setAddress] = useState<string>("0x0000000000000000000000000000000000000000");
+  const [rows, setRows] = useState<TableRow[]>([
     {
-      id: '1',
-      iconUrl: '',
-      name: '0x0000000000000000000000000000000000000001',
-      checked: true,
-      isDeletable: true,
-    },
-    {
-      id: '2',
-      iconUrl: '',
-      name: '0x0000000000000000000000000000000000000002',
-      checked: false,
-      isDeletable: true,
-    },
-    {
-      id: '3',
-      iconUrl: '',
-      name: '0x0000000000000000000000000000000000000003',
-      checked: true,
-      isDeletable: true,
+      id: "0", 
+      cells: [{id: "a", content:"0x0000000000000000000000000000000000000001"}]
     },
   ]);
-  const onItemToggle = (itemId: string | number, checked: boolean) => {
-    const copy = [...items];
-    const localItem = copy.find((i) => i.id === itemId);
-    if (!localItem) {
-      return;
+  const handleDate = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log(event.currentTarget.value)
+  }
+  useEffect(() => {
+    setHasError(!ethers.utils.isAddress(address));
+  }, [address]);
+  const error = 'Invalid Address';
+  const setAddressHeirs = (event: string) => {
+    const objWithIdIndex = rows.findIndex((obj) => obj.id === idHeirs);  
+    const temp = rows
+    if(ethers.utils.isAddress(event)) {
+      temp[objWithIdIndex].cells[0].content = event 
+      setRows(temp)
     }
-    localItem.checked = checked;
-    setItems(copy);
-  };
-  const [address, setAddress] = useState<string>("0x");
+    setAddress(event)
+  }
+  const removeAddressHeirs = () => {
+    let temp = rows
+    temp = temp.filter((obj) => obj.id !== idHeirs)
+    setRows(temp)
+    setIsOpenHeirs(false)
+  }
+  const modal_body_heirs =
+    <div style={{textAlign:"center"}}>
+      <form noValidate autoComplete="off" >
+        <AddressInput
+          label="Address"
+          name="address"
+          networkPrefix="rin"
+          showNetworkPrefix={false}
+          placeholder={'Ethereum address'}
+          showLoadingSpinner={false}
+          address={address}
+          onChangeAddress={setAddressHeirs}
+          error={hasError ? error : ''} 
+        />
+      </form>
+      <Button size="lg" color="error" onClick ={() => removeAddressHeirs()} style={{marginTop: '1rem'}}>
+        Remove
+      </Button>
+      <Button size="lg" color="primary" onClick ={() => setIsOpenHeirs(false)} style={{marginTop: '1rem'}}>
+        Store
+      </Button>
+    </div>
+
+    
+  const addAddressHeirs = () => {
+    
+    setIsOpenHeirs(!isOpenHeirs)
+    
+
+    const temp = rows
+    temp.push({
+      id: "1", 
+      cells: [{id: "b", content:"0x0000000000000000000000000000000000000002"}]
+    })
+    setRows(temp)
+  }
+
+
+  const adjustAddressHeirs = (event: string) => {
+    setIsOpenHeirs(!isOpenHeirs)
+    const objWithIdIndex = rows.findIndex((obj) => obj.id === event);  
+    const tempAddress = rows[objWithIdIndex].cells[0].content?.toString()
+    if(tempAddress){
+      setAddress(tempAddress)
+      setIdHeirs(event)
+    }
+    setIsOpenHeirs(!isOpenHeirs)
+  }
+  const modal_body_inheritance =
+    <div style={{textAlign:"center"}}>
+      <ButtonLink color="primary" iconType="add" onClick={addAddressHeirs}style={{marginBottom: '1rem'}}>
+        Add heir
+      </ButtonLink>
+      <Table 
+        rows={rows}
+        onRowClick={adjustAddressHeirs}
+      />
+     <form className="" noValidate>
+      <TextField
+        id="date"
+        label="Deadline"
+        type="date"
+        defaultValue="2023-05-24"
+        className=""
+        InputLabelProps={{
+          shrink: true,
+        }}
+        onChange={handleDate}
+      />
+    </form>
+      <Button size="lg" color="primary" style={{marginTop: '1rem'}}>
+        Submit change
+      </Button>
+      {isOpenHeirs && (
+        <GenericModal
+          onClose={() => setIsOpenHeirs(false)}
+          title="Change heir"
+          body={modal_body_heirs}
+          footer={""}
+        />
+      )}
+    </div>
+    
+        
+
 
 
 
@@ -70,7 +155,7 @@ const SafeApp = (): React.ReactElement => {
       const safe_module_INTERFACE = new ethers.utils.Interface([
         'function isModuleEnabled(address) external view returns (bool)',
       ])
-      const encodedSafeModule = safe_module_INTERFACE.encodeFunctionData("isModuleEnabled", ["0xb9cBb0e33C97d9ea46Ae312a508ad2b62fF429AA"]);
+      const encodedSafeModule = safe_module_INTERFACE.encodeFunctionData("isModuleEnabled", [inheritance_address_goerli]);
       const configModule = {
         to: safe.safeAddress,
         data: encodedSafeModule
@@ -100,13 +185,38 @@ const SafeApp = (): React.ReactElement => {
   console.log(deadline)
 
 
+  //Add inheritance module to safe
+  const submitTx_addModule = useCallback(async () => {
+    try {   
+      const safe_module_INTERFACE = new ethers.utils.Interface([
+       'function enableModule(address) external',
+      ])
+      const encodedAddModule = safe_module_INTERFACE.encodeFunctionData("enableModule", [inheritance_address_goerli]);
+      const { safeTxHash } = await sdk.txs.send({
+        txs: [
+          {
+            to: safe.safeAddress,
+            value: '0',
+            data: encodedAddModule,
+          },
+        ],
+      })
+      console.log({ safeTxHash })
+      const safeTx = await sdk.txs.getBySafeTxHash(safeTxHash)
+      console.log({ safeTx })
+    } catch (e) {
+      console.error(e)
+    }
+  }, [safe, sdk])
+
+
   return (
     <Container>
       <Title size="md" withoutMargin={false}>Safe: {safe.safeAddress}</Title>
 
 
-      <Button size="lg" color="primary" onClick={() => setIsOpen(!isOpen)} style={{marginBottom: '3rem'}}>
-        Add inheritance
+      <Button size="lg" color="primary" onClick={() => submitTx_addModule()} style={{marginBottom: '3rem'}}>
+        Add inheritance module
       </Button>
 
 
@@ -123,38 +233,17 @@ const SafeApp = (): React.ReactElement => {
       </FlipClockCountdown>
 
 
-      <Button size="lg" color="primary" onClick={() => setIsOpen(!isOpen)} style={{marginTop: '3rem'}}>
+      <Button size="lg" color="primary" onClick={() => setIsOpenInheritance(!isOpenInheritance)} style={{marginTop: '3rem'}}>
         Change inheritance
       </Button>
-      {isOpen && (
-        <ManageListModal
-          defaultIconUrl={""}
-          itemList={items}
-          showDeleteButton
-          addButtonLabel="Add heir"
-          formBody={
-          <div style={{width: "100%"}}>
-            <form noValidate autoComplete="off">
-              <AddressInput
-                label="Address"
-                name="address"
-                networkPrefix="rin"
-                showNetworkPrefix={false}
-                placeholder={'Ethereum address'}
-                showLoadingSpinner={false}
-                address={address}
-                onChangeAddress={setAddress}
-                error={'Invalid Address'}
-              />
-            </form>
-          </div>}
-          onSubmitForm={() => undefined}
-          onClose={() => setIsOpen(false)}
-          onItemToggle={onItemToggle}
-          onItemDeleted={() => alert('asd')}
+      {isOpenInheritance && (
+        <GenericModal
+          onClose={() => setIsOpenInheritance(false)}
+          title="Change inheritance"
+          body={modal_body_inheritance}
+          footer={""}
         />
       )}
-
 
     </Container>
   )
@@ -168,36 +257,22 @@ export default SafeApp
 /*
 x   1. DEPLOY INHERITANCE ON GOERLI => 0xb9cBb0e33C97d9ea46Ae312a508ad2b62fF429AA
 x   1a. call contract from app 
+x   1b. add call add inheritance
+    1c. add call add/change inheritance
+    1d. add call remove inheritance
+    1e. add call execute inheritance
+    1x. check calls above for multiple owner safe
 
-    2. CHECK SAFE WALLET = MODEL 
+--
+   2. CHECK SAFE WALLET = MODEL 
       - NO  - THEN BUTTON TO ADD INHERITANCE MODULE
-      
       - YES NO HEIRS - THEN ADD INHERITANCE BUTTON 
       - YES PENDING - THEN COUNTDOWN AND BUTTON TO ADJUST INHERITANCE
         - MODULE POP UP TO ADD HEIRS AND ADJUST DEADLINE OR REMOVE INHERITANCE
       - YES FINISHED - THEN BUTTON TO EXECUTE INHERITANCE
     3. ADD DARK MODE CHECK
     4. ADD NICE FRONT END LOOK (IN TAB)
+    5. DEPLOY MAINNET + ADD TO DAPP PAGE SAFE
 */ 
 
 
-/*
-  const submitTx = useCallback(async () => {
-    try {
-      const { safeTxHash } = await sdk.txs.send({
-        txs: [
-          {
-            to: safe.safeAddress,
-            value: '0',
-            data: '0x',
-          },
-        ],
-      })
-      console.log({ safeTxHash })
-      const safeTx = await sdk.txs.getBySafeTxHash(safeTxHash)
-      console.log({ safeTx })
-    } catch (e) {
-      console.error(e)
-    }
-  }, [safe, sdk])
-*/

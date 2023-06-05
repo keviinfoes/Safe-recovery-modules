@@ -22,6 +22,14 @@ contract InheritanceModule {
     }
 
     function setHeirs(address[] memory _heirs) public {    
+        //Check no double heirs - simplest by checking in ascending order
+        address previous;
+        uint256 index;
+        while (index < _heirs.length) { 
+            require(_heirs[index] > previous);
+            index += 1;
+        }
+        //Store new heirs
         delete heirs[msg.sender];
         heirs[msg.sender] = _heirs;
     }
@@ -39,11 +47,11 @@ contract InheritanceModule {
         //Add new owners of the safe wallet 
         for (uint i; i < _heirs.length; i += 1) {  
             bytes memory add_owner = abi.encodeWithSignature("addOwnerWithThreshold(address,uint256)", _heirs[i], 1);
-            require(Safe(safe).execTransactionFromModule(safe, 0, add_owner, Enum.Operation.Call), "Execute - could not execute token transfer");        
+            require(Safe(safe).execTransactionFromModule(safe, 0, add_owner, Enum.Operation.Call), "Execute - failed add owners");        
         }
         //Set new threshold to require all new owners to sign
         bytes memory change_threhold = abi.encodeWithSignature("changeThreshold(uint256)", _heirs.length);
-        require(Safe(safe).execTransactionFromModule(safe, 0, change_threhold, Enum.Operation.Call), "Execute - could not execute token transfer");
+        require(Safe(safe).execTransactionFromModule(safe, 0, change_threhold, Enum.Operation.Call), "Execute - failed set threshold");
         //No need to remove previous owners because they are inactive 
     }
 }
