@@ -338,6 +338,8 @@ x   1c. add call add/change inheritance
 x   1d. get data current heirs to display - when inheritance active
 x   1e. add call remove inheritance
 
+    1f. add module to confirm removal of inheritance
+
     1-. add call execute inheritance
     1-. check calls above for multiple owner safe
 
