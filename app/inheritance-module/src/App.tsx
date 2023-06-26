@@ -25,13 +25,18 @@ const SafeApp = (): React.ReactElement => {
 
   const [isOpenInheritance, setIsOpenInheritance] = useState(false);
   const [isOpenHeirs, setIsOpenHeirs] = useState(false);
+  const [isOpenRemove, setIsOpenRemove] = useState(false);
   const [idHeirs, setIdHeirs] = useState("");
   const [hasError, setHasError] = useState<boolean>();
   const [address, setAddress] = useState<string>("0x0000000000000000000000000000000000000000");
   const [enabled, setEnabled]  = useState("inactive") 
   const [deadline, setDeadline]  = useState("0") 
+  const [tempDeadline, setTempDeadline]  = useState("0") 
   const [adjusted, setAdjusted] = useState(false);
   const [rows, setRows] = useState<TableRow[]>([]);
+
+  const [reloaded, setReloaded] = useState(false);
+
 
   // WEB3 CALL FUNCTION - Get inheritance module data
   useEffect(() => {
@@ -62,11 +67,12 @@ const SafeApp = (): React.ReactElement => {
       const responseDeadline = await sdk.eth.call([configDeadline])
       const _deadline = ethers.utils.defaultAbiCoder.decode(["uint256"], responseDeadline)
       setDeadline(_deadline.toString());
+      setTempDeadline(_deadline.toString())
       //Get heirs
       let end = 1
       let index = 0
       const temp = rows
-      if (adjusted === false || temp.length > 0) {
+      if (adjusted === false && temp.length === 0) {
         while (end === 1) {
           const encodedInheritanceHeirs = Inheritance_INTERFACE.encodeFunctionData("heirs", [safe.safeAddress, index]);
           const configHeirs = {
@@ -89,11 +95,11 @@ const SafeApp = (): React.ReactElement => {
       }
       console.log(temp) 
     }
+    setReloaded(false)
     // call the function and catch any error
     fetchData().catch(console.error);;
-  }, [sdk.eth, safe.safeAddress, rows, adjusted])
+  }, [sdk.eth, safe.safeAddress, rows, adjusted, reloaded])
   console.log(enabled)
-
   // WRITE FUNCTIONS - Add inheritance module to safe
   const submitTx_addModule = useCallback(async () => {
     try {   
@@ -136,6 +142,7 @@ const SafeApp = (): React.ReactElement => {
       console.log({ safeTxHash })
       const safeTx = await sdk.txs.getBySafeTxHash(safeTxHash)
       console.log({ safeTx })
+      setReloaded(true)
     } catch (e) {
       console.error(e)
     }
@@ -163,12 +170,35 @@ const SafeApp = (): React.ReactElement => {
       console.error(e)
     }
   }, [sdk])
-
+  //Execute inheritance
+  const submitTx_executeInheritance = useCallback(async () => {
+    try {   
+      const inheritance_module_INTERFACE = new ethers.utils.Interface([
+       'function execute(address payable) external',
+      ])
+      const encodeExecuteInheritance = inheritance_module_INTERFACE.encodeFunctionData("execute", [safe.safeAddress]);
+      const { safeTxHash } = await sdk.txs.send({
+        txs: [
+          {
+            to: inheritance_address_goerli,
+            value: '0',
+            data: encodeExecuteInheritance,
+          },
+        ],
+      })
+      console.log({ safeTxHash })
+      const safeTx = await sdk.txs.getBySafeTxHash(safeTxHash)
+      console.log({ safeTx })
+      setIsOpenHeirs(false)
+    } catch (e) {
+      console.error(e)
+    }
+  }, [safe, sdk])
 
   //Modal for inheritance change
   const handleDate = (event: React.ChangeEvent<HTMLInputElement>) => {
     const timestamp = new Date(event.currentTarget.value).getTime() / 1000
-    setDeadline(timestamp.toString())
+    setTempDeadline(timestamp.toString())
   }
   useEffect(() => {
     setHasError(!ethers.utils.isAddress(address));
@@ -190,6 +220,15 @@ const SafeApp = (): React.ReactElement => {
     setRows(temp)
     setIsOpenHeirs(false)
   }
+  const modal_body_remove =
+    <div style={{textAlign:"center"}}>
+      <div>
+        Confirm that you want to remove the inheritance 
+      </div>
+      <Button size="lg" color="error" onClick ={submitTx_removeInheritance} style={{marginTop: '1rem'}}>
+        Remove
+      </Button>
+    </div>
   const modal_body_heirs =
     <div style={{textAlign:"center"}}>
       <form noValidate autoComplete="off" >
@@ -245,7 +284,8 @@ const SafeApp = (): React.ReactElement => {
       }
     })
     const sort = tempHeirs.sort()
-    submitTx_addInheritance(sort, deadline)
+    submitTx_addInheritance(sort, tempDeadline)
+    setIsOpenInheritance(false)
   }
   const start_time = new Date(parseInt(deadline) * 1000)
   const _date = moment(start_time).format("YYYY-MM-DDTHH:mm")
@@ -255,9 +295,17 @@ const SafeApp = (): React.ReactElement => {
         <ButtonLink color="primary" iconType="add" onClick={addAddressHeirs} style={{marginBottom: '1rem'}}>
           Add heir
         </ButtonLink>
-        <ButtonLink color="error" iconType="filledCross" onClick={submitTx_removeInheritance} style={{marginLeft: '20rem', marginBottom: '1rem'}}>
+        <ButtonLink color="error" iconType="filledCross" onClick={(() => setIsOpenRemove(true))} style={{marginLeft: '20rem', marginBottom: '1rem'}}>
           Remove Inheritance
         </ButtonLink>
+        {isOpenRemove && (
+          <GenericModal
+            onClose={() => setIsOpenRemove(false)}
+            title="Inheritance"
+            body={modal_body_remove}
+            footer={""}
+          />
+        )}
       </Grid >
       <Table 
         rows={rows}
@@ -304,7 +352,9 @@ const SafeApp = (): React.ReactElement => {
         separatorStyle={{ color: 'black', size: '6px' }}
         duration={0.5}
       >
-        FINISHED
+        <Button size="lg" color="secondary" onClick ={submitTx_executeInheritance} style={{marginTop: '1rem'}}>
+          Carry out inheritance
+        </Button>
       </FlipClockCountdown>
       <Button size="lg" color="primary" onClick={() => setIsOpenInheritance(!isOpenInheritance)} style={{marginTop: '3rem'}}>
         Change inheritance
@@ -317,10 +367,6 @@ const SafeApp = (): React.ReactElement => {
           footer={""}
         />
       )}
-
-      <Button size="lg" color="secondary" style={{marginTop: '3rem'}}>
-        Carry out inheritance
-      </Button>
     </Container>
   )
 }
@@ -337,11 +383,11 @@ x   1b. add call add inheritance
 x   1c. add call add/change inheritance
 x   1d. get data current heirs to display - when inheritance active
 x   1e. add call remove inheritance
+x   1f. add call execute inheritance
 
-    1f. add module to confirm removal of inheritance
-
-    1-. add call execute inheritance
+    1-. COUNTDOWN CLOCK CHANGES ON ADJUSTMENT TIME -> ADJUST SO IT ONLY SHOWS THE TIME  STORED ONCHAIN
     1-. check calls above for multiple owner safe
+    1Z. MAKE FLOW FOR BUTTONS AND ON EXECUTE FINISH SHOW --SUCCESFULL EXECUTINO OF INHERITANCE -> AND REFER TO MAIN SAFE PAGE--
 
 --
    2. CHECK SAFE WALLET = MODEL 

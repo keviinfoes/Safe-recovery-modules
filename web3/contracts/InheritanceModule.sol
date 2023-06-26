@@ -21,6 +21,7 @@ contract InheritanceModule {
         deadline[msg.sender] = 0;
     }
 
+    //Notice: heirs can't already be and owner of the safe.
     function setHeirs(address[] memory _heirs) public {    
         //Check no double heirs - simplest by checking in ascending order
         address previous;
@@ -42,16 +43,34 @@ contract InheritanceModule {
     function execute(address payable safe) public {
         require(deadline[safe] != 0, "Execute - no deadline");
         require(block.timestamp >= deadline[safe], "Execute - before deadline");
-        address[] memory _heirs = heirs[safe];
+        
         require(_heirs.length > 0, "Execute - no deadline");
-        //Add new owners of the safe wallet 
-        for (uint i; i < _heirs.length; i += 1) {  
-            bytes memory add_owner = abi.encodeWithSignature("addOwnerWithThreshold(address,uint256)", _heirs[i], 1);
-            require(Safe(safe).execTransactionFromModule(safe, 0, add_owner, Enum.Operation.Call), "Execute - failed add owners");        
-        }
+        //Swap current owners to heirs
+        swapOwners();
         //Set new threshold to require all new owners to sign
         bytes memory change_threhold = abi.encodeWithSignature("changeThreshold(uint256)", _heirs.length);
         require(Safe(safe).execTransactionFromModule(safe, 0, change_threhold, Enum.Operation.Call), "Execute - failed set threshold");
-        //No need to remove previous owners because they are inactive 
+        //Remove inheritance after execution
+        removeInheritance()
     }
+
+    //Swaps current owners for heirs
+    function swapOwners(address payable safe) internal {
+        address[] memory owners = IGnosisSafe(safe).getOwners();
+        address[] memory _heirs = heirs[safe];     
+        address prevOwner = address(0x1);     
+        //remove owners
+        for (uint256 i; i < owners.length - 1; i++) {  
+            bytes memory data = abi.encodeWithSignature("removeOwner(address,address,uint256)", prevOwner, owners[i], 1);
+            require(Safe(safe).execTransactionFromModule(safe, 0, data, Enum.Operation.Call), "Execute - failed remove owners"); 
+        }
+        //swap last owner first heir
+        bytes memory data = abi.encodeWithSignature("swapOwner(address,address,address)", prevOwner, owners[owners.length], _heirs[0]);
+        require(Safe(safe).execTransactionFromModule(safe, 0, data, Enum.Operation.Call), "Execute - failed swap owners"); 
+        //add rest of heirs
+        for (uint i = 1; i < _heirs.length; i += 1) {  
+            bytes memory add_owner = abi.encodeWithSignature("addOwnerWithThreshold(address,uint256)", _heirs[i], 1);
+            require(Safe(safe).execTransactionFromModule(safe, 0, add_owner, Enum.Operation.Call), "Execute - failed add owners");        
+        }
+    }    
 }
