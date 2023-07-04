@@ -80,7 +80,7 @@ contract('InheritanceModule_test', async accounts => {
 				await inheritance.execute(safeProxy.address)
 				assert.fail("The transaction should have thrown an error");
 			} catch (err) {
-				assert.include(err.message, "status 0", "The error message should contain 'status 0'");
+				assert.include(err.message, "before deadline", "The error message should contain 'before deadline'");
 			}
 			//forward time 
 			await timeMachine.advanceTimeAndBlock(37)
