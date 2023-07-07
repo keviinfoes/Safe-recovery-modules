@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 import "./safe-wallet/Safe.sol";
 
-contract   SecretRecoveryModule {
+contract SecretRecoveryModule {
     string public constant NAME = "Secret Recovery Module";
     string public constant VERSION = "0.1.0";
 
